@@ -2,7 +2,10 @@ import xml.etree.ElementTree as ET
 import requests
 import time
 import musicbrainzngs as mb
+import re
 from numpy import concatenate
+import asyncio
+from aiohttp import ClientSession
 
 
 # global variables #
@@ -70,6 +73,67 @@ def fetch_recording_count(artist_id):
         raise e
 
 
+def fetch_recording_list_module(artist_id, record_count):
+
+    mb.set_useragent('tech-test (contact-joe.wheelhouse@gmail.com', '0')
+    _offset = _OFFSET
+    _recordings = []
+    while _offset < int(record_count):
+        _ret = mb.browse_recordings(artist_id, limit=_LIMIT, offset=_offset)
+        _rec_json = _ret["recording-list"]
+        for r in _rec_json:
+            s = r["title"].upper()
+            if (
+                    check_brackets_in_arr(s, _recordings) and
+                    check_cases_in_arr(s, _recordings)
+            ):
+                _recordings.append(s)
+        _offset += 100
+    return _recordings
+
+
+def check_brackets_in_arr(song, arr):
+
+    res = re.sub(r'\ ?\((.*?)\)', '', song)
+    if res not in arr:
+        return True
+
+
+def check_cases_in_arr(song, arr):
+
+    if song not in arr:
+        return True
+
+
+def check_interlude_in_arr(song, arr):
+
+    res = re.sub(r'\ ?\[(.*?)\]|\ ?\((.*?)\)', '', song)
+    if not(res == ''):
+        return True
+
+
+# functions that deal with xml fetch - alternative to python musicbrainz module
+
+
+def add_recs_to_array_from_tree(rtree: ET.ElementTree):
+    """
+    given an xml tree return the unique recordings as an array
+    :param rtree: xml element tree containing recordings
+    :return: array unique records for tree
+    """
+    # not case sensitive - remove any replicas.
+    arr = []
+    root = rtree.getroot()
+    rec_tree = root[_IGET_RECS]
+    for rec in rec_tree:
+        print(f"checking if this is in the array: {rec[_IGET_REC_NAME].text.upper()}")
+        if rec[_IGET_REC_NAME].text.upper() not in arr:
+            arr.append(rec[_IGET_REC_NAME].text.upper())
+            print(f"adding to array: {rec[_IGET_REC_NAME].text.upper()}")
+
+    return arr
+
+
 def fetch_recording_list(artist_id, record_count):
     """
     given an artist_id and record count fetch all the recordings
@@ -101,35 +165,3 @@ def fetch_recording_list(artist_id, record_count):
         _offset += _LIMIT
 
     return _recordings
-
-
-def fetch_recording_list_module(artist_id, record_count):
-
-    mb.set_useragent('tech-test (contact-joe.wheelhouse@gmail.com', '0')
-    _offset = _OFFSET
-    _recordings = []
-    while _offset < int(record_count):
-        _ret = mb.browse_recordings(artist_id, limit=_LIMIT, offset=_offset)
-        _artist_json = _ret["recording-list"]
-        for r in _artist_json:
-            if r["title"] not in _recordings:
-                _recordings.append(r["title"])
-        _offset += 100
-    return _recordings
-
-
-def add_recs_to_array_from_tree(rtree: ET.ElementTree):
-    """
-    given an xml tree return the unique recordings as an array
-    :param rtree: xml element tree containing recordings
-    :return: array unique records for tree
-    """
-    # not case sensitive - remove any replicas.
-    arr = []
-    root = rtree.getroot()
-    rec_tree = root[_IGET_RECS]
-    for rec in rec_tree:
-        if rec[_IGET_REC_NAME].text not in arr:
-            arr.append(rec[_IGET_REC_NAME].text)
-
-    return arr
