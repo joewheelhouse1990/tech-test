@@ -1,5 +1,6 @@
 import functions.musicbrainz_funcs as mbf
 import functions.ApiLyricCollector as alf
+import musicbrainzngs as mb
 import numpy as np
 
 
@@ -57,7 +58,7 @@ class FetchArtistBuilder:
 
         self.lyrics_sum = np.sum(self.lyric_count_arr)
         self.song_count = len(self.lyric_count_arr)
-        self.avg_lyrics = round(self.lyrics_sum/self.song_count)
+        self.avg_lyrics = round(self.lyrics_sum/self.song_count, 1)
         self.avg_lyrics_fl = self.lyrics_sum//self.song_count
 
     def print_to_console(self):

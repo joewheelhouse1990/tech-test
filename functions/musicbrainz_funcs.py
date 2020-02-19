@@ -1,11 +1,10 @@
-import xml.etree.ElementTree as ET
+import xml.etree.ElementTree as Et
 import requests
 import time
 import musicbrainzngs as mb
 import re
+import sys
 from numpy import concatenate
-import asyncio
-from aiohttp import ClientSession
 
 
 # global variables #
@@ -42,7 +41,7 @@ def fetch_artist_id(artist):
     build_url = f"{_MBRAINZ}artist/?query=artist:{artist}"
 
     response = requests.get(build_url)
-    artist_tree = ET.ElementTree(ET.fromstring(response.content))
+    artist_tree = Et.ElementTree(Et.fromstring(response.content))
     artist_root = artist_tree.getroot()[_IGET_ARTIST]
 
     for a in artist_root:
@@ -62,37 +61,60 @@ def fetch_recording_count(artist_id):
 
     try:
         response = requests.get(build_url)
-        rcrd_tree = ET.ElementTree(ET.fromstring(response.content))
+        rcrd_tree = Et.ElementTree(Et.fromstring(response.content))
         rcrd_root = rcrd_tree.getroot()[_IGET_RCRD]
 
         rcrd_count = rcrd_root.attrib["count"]
 
         return rcrd_count
     except KeyError as e:
-        print("Write to log/console: No artist with that id")
+        print(f"No artist with id: {artist_id}")
         raise e
 
 
 def fetch_recording_list_module(artist_id, record_count):
+    """
+    fetch the recording list from the musicbrainz python module
+    :param artist_id: musicbrainz id
+    :param record_count: count of recordings want to return
+    :return: an array of recordings found in the module
+    """
 
-    mb.set_useragent('tech-test (contact-joe.wheelhouse@gmail.com', '0')
     _offset = _OFFSET
     _recordings = []
-    while _offset < int(record_count):
-        _ret = mb.browse_recordings(artist_id, limit=_LIMIT, offset=_offset)
-        _rec_json = _ret["recording-list"]
-        for r in _rec_json:
-            s = r["title"].upper()
-            if (
-                    check_brackets_in_arr(s, _recordings) and
-                    check_cases_in_arr(s, _recordings)
-            ):
-                _recordings.append(s)
-        _offset += 100
-    return _recordings
+
+    try:
+        # set the musicbrainz api user agent
+        mb.set_useragent('jw-tech-test', '1', contact='joe.wheelhouse@gmail.com')
+
+        while _offset < int(record_count):
+            _ret = mb.browse_recordings(artist_id, limit=_LIMIT, offset=_offset)
+            _rec_json = _ret["recording-list"]
+            for r in _rec_json:
+                s = r["title"].upper()
+                if (
+                        check_brackets_in_arr(s, _recordings) and
+                        check_cases_in_arr(s, _recordings)
+                ):
+                    _recordings.append(s)
+            _offset += 100
+        return _recordings
+    except mb.UsageError as e:
+        print("No access to musicbrainz API")
+    except mb.ResponseError as e:
+        print(f"No artist found with id {artist_id}")
+    except Exception as e:
+        print(f"Unexpected error: {sys.info()}")
+        raise e
 
 
 def check_brackets_in_arr(song, arr):
+    """
+    check text string with something in brackets add eg. 'song (live)' is not also added to array if 'song' already in
+    :param song: song as a string
+    :param arr: array of recordings already added
+    :return: returns True if song does not match any other song based on brackets check
+    """
 
     res = re.sub(r'\ ?\((.*?)\)', '', song)
     if res not in arr:
@@ -100,22 +122,32 @@ def check_brackets_in_arr(song, arr):
 
 
 def check_cases_in_arr(song, arr):
+    """
+    plain function to make if statement clearer for checking in array
+    :param song: song as a string
+    :param arr: array of recordings already added
+    :return: returns True if song is not in array
+    """
 
     if song not in arr:
         return True
 
+# functions that deal with xml fetch - alternative to python musicbrainz module and currently not used
 
-def check_interlude_in_arr(song, arr):
+
+def check_interlude_in_arr(song):
+    """
+    check if song is probably spoken/interlude only
+    :param song: song as a string
+    :return: True if whole song is in [] or ()
+    """
 
     res = re.sub(r'\ ?\[(.*?)\]|\ ?\((.*?)\)', '', song)
     if not(res == ''):
         return True
 
 
-# functions that deal with xml fetch - alternative to python musicbrainz module
-
-
-def add_recs_to_array_from_tree(rtree: ET.ElementTree):
+def add_recs_to_array_from_tree(rtree: Et.ElementTree):
     """
     given an xml tree return the unique recordings as an array
     :param rtree: xml element tree containing recordings
@@ -154,7 +186,7 @@ def fetch_recording_list(artist_id, record_count):
         _build_url = f"{_url_base}&offset={_offset}"
         fetch_rec = requests.get(_build_url)
         # put into element tree
-        fetch_rec_tree = ET.ElementTree(ET.fromstring(fetch_rec.content))
+        fetch_rec_tree = Et.ElementTree(Et.fromstring(fetch_rec.content))
         # fetch array of recordings
         _arr_recordings = add_recs_to_array_from_tree(fetch_rec_tree)
         # concatenate the new results with the existing

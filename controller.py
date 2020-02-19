@@ -26,6 +26,8 @@ def run_job():
     if run_fad.lyric_count_arr.size > 0:
         run_fad.summarise_lyrics()
         run_fad.print_to_console()
+    else:
+        print("No songs fetched from API")
 
 
 if __name__ == '__main__':

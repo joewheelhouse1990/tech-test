@@ -56,32 +56,3 @@ class ApiLyricCollector:
                 fetch_tasks.append(self.process_response(url=url, session=session, logger=logger))
 
             await asyncio.gather(*fetch_tasks)
-
-
-if __name__ == '__main__':
-    def setup_log():
-        logging.basicConfig(
-            format="%(asctime)s %(levelname)s:%(name)s: %(message)s",
-            level=logging.INFO
-        )
-        logger = logging.getLogger(__name__)
-
-        return logger
-
-    _logger = setup_log()
-
-    _logger.info("Starting process")
-
-    urlsa = []
-    urlsa.append('https://api.lyrics.ovh/v1/Coldplay/Yellow')
-    urlsa.append('https://api.lyrics.ovh/v1/Coldplay/Trouble')
-    urlsa.append('https://api.lyrics.ovh/v1/Green Day/American Idiot')
-    urlsa.append('https://api.lyrics.ovh/v1/Green Day/Basket Case')
-    urlsa.append('https://api.lyrics.ovh/v1/Green Day/Warning')
-    urlsa.append('https://api.lyrics.ovh/v1/Green Day/Minority')
-    urlsa.append('https://api.lyrics.ovh/v1/Green Day/When I Come Around')
-    urlsa.append('https://api.lyrics.ovh/v1/Green Day/She')
-    urlsa.append('https://api.lyrics.ovh/v1/Green Day/King For A Day')
-    urlsa.append('https://api.lyrics.ovh/v1/Green Day/Holiday')
-
-    asyncio.run(work_through_urls(urlsa, _logger))
