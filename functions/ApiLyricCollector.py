@@ -28,7 +28,10 @@ class ApiLyricCollector:
 
         _json = json.loads(url_content)
 
-        _word_count = len(re.findall(r'\S+', _json["lyrics"]))
+        if _json["lyrics"].upper() == "INSTRUMENTAL":
+            _word_count = 0
+        else:
+            _word_count = len(re.findall(r'\S+', _json["lyrics"]))
 
         return _word_count
 
